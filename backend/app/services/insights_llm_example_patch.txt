@@ -1,0 +1,5 @@
+# Example integration point: in your insights worker where you call the LLM provider, replace direct calls with:
+# from backend.app.services.llm_client import LLMClientWrapper
+# client = LLMClientWrapper(provider='openai', api_key_env='OPENAI_API_KEY')
+# resp = client.call(org_id='org123', prompt=prompt_text, max_tokens=256)
+# Use resp['text'] as the model output; usage is already recorded in usage_records.

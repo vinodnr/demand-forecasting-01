@@ -1,0 +1,18 @@
+[
+  {
+    "plan_tier": "free",
+    "stripe_price_id": "price_free_sample"
+  },
+  {
+    "plan_tier": "pro",
+    "stripe_price_id": "price_pro_sample"
+  },
+  {
+    "plan_tier": "business",
+    "stripe_price_id": "price_business_sample"
+  },
+  {
+    "plan_tier": "enterprise",
+    "stripe_price_id": "price_enterprise_sample"
+  }
+]

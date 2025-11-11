@@ -1,0 +1,16 @@
+{
+  "heuristic_changes_count": 10,
+  "changed_files": [
+    "frontend/src/components/trust/TransparencyStats.tsx",
+    "frontend/src/components/TrustLayout.tsx",
+    "frontend/src/pages/trust/index.tsx",
+    "frontend/src/pages/trust/transparency.tsx",
+    "frontend/src/pages/trust/audit-logs.tsx",
+    "frontend/src/pages/trust/residency.tsx",
+    "frontend/src/pages/legal/privacy.tsx",
+    "frontend/src/pages/legal/dpa.tsx",
+    "frontend/src/pages/settings/retention.tsx",
+    "frontend/src/pages/settings/delete-org.tsx"
+  ],
+  "note": "Heuristic upgrades applied: improved alts, aria-labels from placeholders, contrast small tweak, role=main added. Please run axe-playwright to get a detailed violations report; paste results and I will auto-fix actionable items."
+}

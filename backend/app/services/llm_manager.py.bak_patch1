@@ -1,0 +1,103 @@
+import os, time, json, logging
+from functools import lru_cache
+logger = logging.getLogger('llm_manager')
+
+# Short in-memory cache with TTL using a simple dict
+_cache = {}
+_CACHE_TTL = int(os.getenv('LLM_MANAGER_CACHE_TTL_SECONDS', '30'))
+
+def _now():
+    return int(time.time())
+
+def _set_cache(key, value):
+    _cache[key] = {'value': value, 'ts': _now()}
+
+def _get_cache(key):
+    entry = _cache.get(key)
+    if not entry:
+        return None
+    if _now() - entry['ts'] > _CACHE_TTL:
+        try:
+            del _cache[key]
+        except KeyError:
+            pass
+        return None
+    return entry['value']
+
+# NOTE: this module expects a llm_manager._get_conn() to access the DB connection helper in llm_manager style in your project.
+def _get_conn():
+    # Try to import existing llm_manager DB helper in project (llm_manager._get_conn was previously used)
+    try:
+        from . import llm_manager as lm
+        # Avoid recursion; in repo context, real DB helper exists elsewhere; fallthrough
+    except Exception:
+        pass
+    # Fallback: raise - calling code should monkeypatch or import project's DB helper
+    raise RuntimeError('Database connection helper not found. Patch llm_manager._get_conn to return psycopg2 connection.')
+
+def get_provider_for_org(org_id=None, plan_id=None):
+    """Resolve provider_key for an org, with precedence:
+      1) org_llm_override
+      2) plan_llm_map (using plan_id or org's subscription plan)
+      3) default provider from llm_providers table (first row) - fallback
+    Returns provider_key string (e.g., 'openai', 'gemini') or None
+    """
+    cache_key = f'prov:{org_id}:{plan_id}'
+    cached = _get_cache(cache_key)
+    if cached:
+        return cached
+
+    # 1) check override
+    try:
+        conn = _get_conn()
+        with conn.cursor() as cur:
+            if org_id:
+                cur.execute('SELECT provider_key FROM public.org_llm_override WHERE org_id=%s ORDER BY created_at DESC LIMIT 1', (org_id,))
+                r = cur.fetchone()
+                if r and r[0]:
+                    _set_cache(cache_key, r[0])
+                    return r[0]
+            # 2) If plan_id provided, check mapping directly
+            if plan_id:
+                cur.execute('SELECT provider_key FROM public.plan_llm_map WHERE plan_id=%s LIMIT 1', (plan_id,))
+                r = cur.fetchone()
+                if r and r[0]:
+                    _set_cache(cache_key, r[0])
+                    return r[0]
+            # 2b) If no plan_id, try to lookup org subscription's plan_id
+            if org_id:
+                cur.execute('SELECT plan_id FROM public.org_subscriptions WHERE org_id=%s AND status=%s ORDER BY started_at DESC LIMIT 1', (org_id, 'active'))
+                r = cur.fetchone()
+                if r and r[0]:
+                    plan_id_found = r[0]
+                    cur.execute('SELECT provider_key FROM public.plan_llm_map WHERE plan_id=%s LIMIT 1', (plan_id_found,))
+                    r2 = cur.fetchone()
+                    if r2 and r2[0]:
+                        _set_cache(cache_key, r2[0])
+                        return r2[0]
+            # 3) fallback to first provider in llm_providers
+            cur.execute('SELECT provider_key FROM public.llm_providers ORDER BY created_at LIMIT 1')
+            r = cur.fetchone()
+            if r and r[0]:
+                _set_cache(cache_key, r[0])
+                return r[0]
+    finally:
+        try: conn.close()
+        except: pass
+    return None
+
+def set_org_override(org_id, provider_key, changed_by=None, reason=None):
+    try:
+        conn = _get_conn()
+        with conn.cursor() as cur:
+            cur.execute('INSERT INTO public.org_llm_override (org_id, provider_key, reason) VALUES (%s,%s,%s) RETURNING id', (org_id, provider_key, reason))
+            oid = cur.fetchone()[0]
+            # audit
+            cur.execute('INSERT INTO public.llm_changes_audit (org_id, old_provider, new_provider, changed_by, reason) VALUES (%s,%s,%s,%s,%s)', (org_id, None, provider_key, changed_by, reason))
+            conn.commit()
+            # update cache
+            _set_cache(f'prov:{org_id}:', provider_key)
+            return oid
+    finally:
+        try: conn.close()
+        except: pass

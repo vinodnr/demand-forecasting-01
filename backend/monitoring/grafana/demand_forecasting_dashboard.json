@@ -1,0 +1,72 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Demand Forecasting - Service Overview",
+    "panels": [
+      {
+        "type": "graph",
+        "title": "HTTP Requests per second",
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total[1m]))",
+            "legendFormat": "requests/s"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "type": "graph",
+        "title": "HTTP Request Latency (p95)",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_request_latency_seconds_bucket[5m])) by (le))",
+            "legendFormat": "p95"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        }
+      },
+      {
+        "type": "graph",
+        "title": "LLM Tokens Used (1h rate)",
+        "targets": [
+          {
+            "expr": "sum(rate(llm_tokens_used_total[1h])) by (provider)",
+            "legendFormat": "{{provider}}"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        }
+      },
+      {
+        "type": "stat",
+        "title": "Active Workers",
+        "targets": [
+          {
+            "expr": "sum(active_worker_count) by (worker_name)"
+          }
+        ],
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 12,
+          "y": 8
+        }
+      }
+    ],
+    "schemaVersion": 30
+  }
+}

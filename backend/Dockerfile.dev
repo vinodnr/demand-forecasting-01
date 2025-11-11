@@ -1,0 +1,39 @@
+# backend/Dockerfile.dev
+FROM python:3.11-slim
+
+ARG PY_UID=1000
+ARG PY_GID=1000
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends build-essential gcc git curl && \
+    groupadd -g ${PY_GID} appgroup && \
+    useradd -m -u ${PY_UID} -g appgroup appuser && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+ENV PIP_NO_CACHE_DIR=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH=/home/appuser/.local/bin:$PATH
+
+# Copy requirements from backend context (this Dockerfile expects the build context to be ./backend)
+COPY requirements.txt ./requirements.txt
+
+# Install into global site-packages so CLI tools (uvicorn, etc.) are available to non-root runtime user
+RUN pip install --upgrade pip setuptools wheel && \
+    pip install -r requirements.txt
+
+# Copy application code (context: ./backend)
+COPY . /app
+
+# Ensure appuser owns the app files
+RUN chown -R appuser:appgroup /app
+
+# Run as non-root user
+USER appuser
+
+EXPOSE 8000
+
+# Default dev command (can be overridden in compose)
+# CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["python", "/app/entrypoint.py"]

@@ -1,0 +1,51 @@
+{
+  "superadmin": {
+    "email": "vinsbox@gmail.com",
+    "password": "Myvin1234!",
+    "id": "super-admin-1",
+    "role": "superadmin"
+  },
+  "sample_clients": [
+    {
+      "email": "free1@example.com",
+      "password": "Cadmin!23$",
+      "plan": "free"
+    },
+    {
+      "email": "free2@example.com",
+      "password": "Cadmin!23$",
+      "plan": "free"
+    },
+    {
+      "email": "pro1@example.com",
+      "password": "Cadmin!23$",
+      "plan": "pro"
+    },
+    {
+      "email": "pro2@example.com",
+      "password": "Cadmin!23$",
+      "plan": "pro"
+    },
+    {
+      "email": "business1@example.com",
+      "password": "Cadmin!23$",
+      "plan": "business"
+    },
+    {
+      "email": "business2@example.com",
+      "password": "Cadmin!23$",
+      "plan": "business"
+    },
+    {
+      "email": "enterprise1@example.com",
+      "password": "Cadmin!23$",
+      "plan": "enterprise"
+    },
+    {
+      "email": "enterprise2@example.com",
+      "password": "Cadmin!23$",
+      "plan": "enterprise"
+    }
+  ],
+  "notes": "Run backend/scripts/seed_test_users.py inside the backend container with DATABASE_URL set to your dev DB (e.g., demand_forecast)."
+}

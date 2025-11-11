@@ -1,0 +1,17 @@
+{
+  "modified_files_count": 11,
+  "modified_files": [
+    "/mnt/data/project_workdir/frontend/src/components/TrustLayout.tsx",
+    "/mnt/data/project_workdir/frontend/src/components/trust/RetentionTable.tsx",
+    "/mnt/data/project_workdir/frontend/src/components/trust/DeleteOrgConfirmModal.tsx",
+    "/mnt/data/project_workdir/frontend/src/pages/trust/index.tsx",
+    "/mnt/data/project_workdir/frontend/src/pages/trust/transparency.tsx",
+    "/mnt/data/project_workdir/frontend/src/pages/trust/audit-logs.tsx",
+    "/mnt/data/project_workdir/frontend/src/pages/trust/residency.tsx",
+    "/mnt/data/project_workdir/frontend/src/pages/legal/dpa.tsx",
+    "/mnt/data/project_workdir/frontend/src/pages/settings/retention.tsx",
+    "/mnt/data/project_workdir/frontend/src/pages/settings/delete-org.tsx",
+    "/mnt/data/project_workdir/.github/workflows/ci.yml"
+  ],
+  "note": "Automated, conservative fixes applied. Please review changes, run the axe test locally, and address any remaining issues."
+}

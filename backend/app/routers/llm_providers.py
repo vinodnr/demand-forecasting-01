@@ -1,0 +1,99 @@
+from fastapi import APIRouter, Body, Depends, HTTPException
+from ..services import llm_manager
+from ..deps.permissions import require_permission
+
+router = APIRouter(prefix='/v1/admin/llm', tags=['llm'])
+
+@router.get('/providers', dependencies=[Depends(require_permission('admin','view'))])
+def list_providers():
+    try:
+        conn = llm_manager._get_conn()
+        with conn.cursor() as cur:
+            cur.execute('SELECT provider_key, display_name, config FROM public.llm_providers ORDER BY display_name')
+            rows = cur.fetchall()
+            return [dict(r) for r in rows]
+    finally:
+        try: conn.close()
+        except: pass
+
+@router.post('/providers', dependencies=[Depends(require_permission('admin','create'))])
+def create_provider(body: dict = Body(...)):
+    key = body.get('provider_key')
+    name = body.get('display_name')
+    cfg = body.get('config') or {}
+    if not key or not name:
+        raise HTTPException(status_code=400, detail='provider_key and display_name are required')
+    try:
+        conn = llm_manager._get_conn()
+        with conn.cursor() as cur:
+            cur.execute('INSERT INTO public.llm_providers (provider_key, display_name, config) VALUES (%s,%s,%s::jsonb) RETURNING provider_key, display_name, config', (key, name, json.dumps(cfg)))
+            row = cur.fetchone()
+            conn.commit()
+            return dict(row)
+    finally:
+        try: conn.close()
+        except: pass
+
+@router.get('/plan-mapping', dependencies=[Depends(require_permission('admin','view'))])
+def list_plan_mappings():
+    try:
+        conn = llm_manager._get_conn()
+        with conn.cursor() as cur:
+            cur.execute('SELECT p.id as plan_id, p.name as plan_name, p.tier, m.provider_key FROM public.plans p LEFT JOIN public.plan_llm_map m ON p.id = m.plan_id ORDER BY p.tier')
+            rows = cur.fetchall()
+            return [dict(r) for r in rows]
+    finally:
+        try: conn.close()
+        except: pass
+
+@router.put('/plan-mapping/{plan_id}', dependencies=[Depends(require_permission('admin','update'))])
+def set_plan_mapping(plan_id: str, body: dict = Body(...)):
+    provider_key = body.get('provider_key')
+    if not provider_key:
+        raise HTTPException(status_code=400, detail='provider_key required')
+    try:
+        conn = llm_manager._get_conn()
+        with conn.cursor() as cur:
+            cur.execute('DELETE FROM public.plan_llm_map WHERE plan_id=%s', (plan_id,))
+            cur.execute('INSERT INTO public.plan_llm_map (plan_id, provider_key) VALUES (%s,%s)', (plan_id, provider_key))
+            conn.commit()
+            return {'status':'ok'}
+    finally:
+        try: conn.close()
+        except: pass
+
+@router.get('/org-override/{org_id}', dependencies=[Depends(require_permission('admin','view'))])
+def get_org_override(org_id: str):
+    try:
+        conn = llm_manager._get_conn()
+        with conn.cursor() as cur:
+            cur.execute('SELECT provider_key, reason, created_at FROM public.org_llm_override WHERE org_id=%s ORDER BY created_at DESC LIMIT 1', (org_id,))
+            row = cur.fetchone()
+            return dict(row) if row else {}
+    finally:
+        try: conn.close()
+        except: pass
+
+@router.post('/org-override/{org_id}', dependencies=[Depends(require_permission('admin','update'))])
+def set_org_override_route(org_id: str, body: dict = Body(...), changed_by: str = None):
+    provider_key = body.get('provider_key')
+    reason = body.get('reason')
+    if not provider_key:
+        raise HTTPException(status_code=400, detail='provider_key required')
+    try:
+        oid = llm_manager.set_org_override(org_id, provider_key, changed_by=changed_by, reason=reason)
+        return {'status':'ok', 'id': oid}
+    finally:
+        pass
+
+@router.get('/plan-mapping-audit', dependencies=[Depends(require_permission('admin','view'))])
+def get_plan_mapping_audit(limit: int = 50):
+    try:
+        conn = llm_manager._get_conn()
+        with conn.cursor() as cur:
+            cur.execute('SELECT id, org_id, plan_id, old_provider, new_provider, changed_by, reason, created_at FROM public.llm_changes_audit ORDER BY created_at DESC LIMIT %s', (limit,))
+            rows = cur.fetchall()
+            return [dict(r) for r in rows]
+    finally:
+        try: conn.close()
+        except: pass

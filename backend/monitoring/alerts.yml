@@ -1,0 +1,18 @@
+groups:
+  - name: demand_slo_alerts
+    rules:
+      - alert: AvailabilityBurning
+        expr: (1 - (slo:availability_30d)) > 0.02
+        for: 1h
+        labels: { severity: "critical" }
+        annotations:
+          summary: "Availability dropped below objective (2% error budget burn)"
+          description: "Availability SLO (30d) violated."
+
+      - alert: HighLatencyP95
+        expr: slo:latency_p95_7d > 0.5
+        for: 15m
+        labels: { severity: "critical" }
+        annotations:
+          summary: "High P95 latency"
+          description: "P95 latency over 7d exceeds 500ms."

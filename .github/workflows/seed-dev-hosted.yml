@@ -1,0 +1,93 @@
+name: Seed Dev Data (hosted runner)
+
+# Run when you push to dev or manually trigger
+on:
+  push:
+    branches: ['dev']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  seed-dev:
+    name: Seed dev data on GitHub-hosted runner
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      # Optional: override these via repository secrets if needed
+      COMPOSE_FILE: backend/monitoring/docker-compose.dev.yml
+      DB_NAME: demand_forecast
+      BACKEND_SERVICE: backend
+      POSTGRES_SERVICE: postgres
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx (required to run docker commands comfortably)
+        uses: docker/setup-buildx-action@v3
+
+      - name: Ensure Docker Compose is available
+        run: |
+          docker compose version
+        # Note: GitHub-hosted runners include Docker; docker-compose v2 is available as `docker compose`.
+
+      - name: Start dev stack (detached)
+        run: |
+          echo "Starting dev stack with $COMPOSE_FILE"
+          docker compose -f $COMPOSE_FILE up -d --build
+        env:
+          HETZNER_TOKEN: ${{ secrets.HETZNER_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Wait for Postgres readiness
+        run: |
+          echo "Waiting for Postgres to become healthy..."
+          for i in $(seq 1 60); do
+            if docker compose -f $COMPOSE_FILE exec -T $POSTGRES_SERVICE pg_isready -U postgres > /dev/null 2>&1; then
+              echo "Postgres is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Postgres did not become ready in time"
+          docker compose -f $COMPOSE_FILE ps
+          docker compose -f $COMPOSE_FILE logs --no-color $POSTGRES_SERVICE | sed -n '1,200p'
+          exit 1
+        timeout-minutes: 10
+
+      - name: Seed users
+        run: |
+          echo "Seeding users..."
+          docker compose -f $COMPOSE_FILE exec -T $BACKEND_SERVICE             python backend/scripts/seed_test_users.py
+        # if your backend needs extra env overrides, set them via env: here
+
+      - name: Seed orgs and link users
+        run: |
+          echo "Seeding orgs and linking users..."
+          docker compose -f $COMPOSE_FILE exec -T $BACKEND_SERVICE             python backend/scripts/seed_orgs_and_users.py
+
+      - name: Verify seeded data (sample)
+        run: |
+          echo "Verifying seeded users (listing a few rows)..."
+          docker compose -f $COMPOSE_FILE exec -T $POSTGRES_SERVICE             psql -U postgres -d $DB_NAME -c "SELECT email, role, plan, org_id, is_active FROM users ORDER BY email LIMIT 20;"
+          echo "Listing organizations..."
+          docker compose -f $COMPOSE_FILE exec -T $POSTGRES_SERVICE             psql -U postgres -d $DB_NAME -c "SELECT id, name, plan FROM organizations ORDER BY plan;"
+        continue-on-error: false
+
+      - name: Dump small logs for debugging (backend last 200 lines)
+        if: failure()
+        run: |
+          echo "==== Backend logs ===="
+          docker compose -f $COMPOSE_FILE logs --no-color --tail=200 $BACKEND_SERVICE || true
+          echo "==== Postgres logs ===="
+          docker compose -f $COMPOSE_FILE logs --no-color --tail=200 $POSTGRES_SERVICE || true
+
+      - name: Tear down dev stack (cleanup)
+        if: always()
+        run: |
+          echo "Tearing down dev stack to avoid resource leakage"
+          docker compose -f $COMPOSE_FILE down --volumes --remove-orphans

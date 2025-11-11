@@ -1,0 +1,14 @@
+"""LLM integration helper
+
+Provides get_llm_client() which returns an OpenAIClient (if available) and convenience wrappers.
+Call this from workers that need to perform LLM calls so usage is recorded automatically.
+
+Example:
+from backend.app.services.llm_integration import get_llm_client
+client = get_llm_client()
+resp = client.chat_completion(org_id, messages, model='gpt-4o-mini', max_tokens=256)
+"""
+from .llm_client import OpenAIClient
+
+def get_llm_client():
+    return OpenAIClient()

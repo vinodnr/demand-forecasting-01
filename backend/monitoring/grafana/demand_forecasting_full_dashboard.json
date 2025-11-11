@@ -1,0 +1,118 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Demand Forecasting - Full Observability",
+    "panels": [
+      {
+        "type": "graph",
+        "title": "HTTP Requests per second (1m)",
+        "targets": [
+          {
+            "expr": "job:http_requests:rate1m",
+            "legendFormat": "requests/s"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "type": "graph",
+        "title": "Request Latency p95 (recorded)",
+        "targets": [
+          {
+            "expr": "job:request_latency_p95:histogram",
+            "legendFormat": "p95"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        }
+      },
+      {
+        "type": "graph",
+        "title": "LLM Tokens Used (1h rate)",
+        "targets": [
+          {
+            "expr": "job:llm_tokens_rate:1h",
+            "legendFormat": "{{job}}"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        }
+      },
+      {
+        "type": "stat",
+        "title": "Availability (30d SLO)",
+        "targets": [
+          {
+            "expr": "slo:availability_30d"
+          }
+        ],
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 12,
+          "y": 8
+        }
+      },
+      {
+        "type": "stat",
+        "title": "Latency p95 (7d)",
+        "targets": [
+          {
+            "expr": "slo:latency_p95_7d"
+          }
+        ],
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 18,
+          "y": 8
+        }
+      },
+      {
+        "type": "table",
+        "title": "Active Workers",
+        "targets": [
+          {
+            "expr": "sum(active_worker_count) by (worker_name)"
+          }
+        ],
+        "gridPos": {
+          "h": 6,
+          "w": 12,
+          "x": 0,
+          "y": 16
+        }
+      },
+      {
+        "type": "graph",
+        "title": "Error Rate (5xx) 5m",
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{http_status=~\"5..\"}[5m]))",
+            "legendFormat": "5xx"
+          }
+        ],
+        "gridPos": {
+          "h": 6,
+          "w": 12,
+          "x": 12,
+          "y": 16
+        }
+      }
+    ],
+    "schemaVersion": 30
+  }
+}

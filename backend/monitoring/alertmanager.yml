@@ -1,0 +1,33 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: 'slack-ops'
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 3h
+  routes:
+    - receiver: 'pagerduty-critical'
+      match:
+        severity: 'critical'
+
+receivers:
+  - name: 'slack-ops'
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#ops-alerts'
+        send_resolved: true
+
+  - name: 'pagerduty-critical'
+    pagerduty_configs:
+      - routing_key: '${PAGERDUTY_ROUTING_KEY}'
+        severity: 'critical'
+        url: 'https://events.pagerduty.com/v2/enqueue'
+        send_resolved: true
+
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'job']

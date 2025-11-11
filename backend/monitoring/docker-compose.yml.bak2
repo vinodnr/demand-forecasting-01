@@ -1,0 +1,78 @@
+version: '3.8'
+services:
+
+backend:
+  build:
+    context: ..  # build from backend/ (relative to backend/monitoring)
+    dockerfile: Dockerfile
+  environment:
+    - DATABASE_URL=${DATABASE_URL}
+    - REDIS_URL=redis://redis:6379/0
+    - LLM_MANAGER_CACHE_TTL_SECONDS=30
+    # Add any other required env vars here (OPENAI_API_KEY, GEMINI_API_KEY, etc.)
+  ports:
+    - "8000:8000"
+  depends_on:
+    - redis
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost:8000/metrics"]
+    interval: 30s
+    timeout: 10s
+    retries: 5
+  networks:
+    - monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./rules.yml:/etc/prometheus/rules.yml:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--web.enable-lifecycle'
+      - '--rule.files=/etc/prometheus/rules.yml'
+    ports:
+      - "9090:9090"
+    networks:
+      - monitoring
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    environment:
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+    ports:
+      - "9093:9093"
+    networks:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:9.0.0
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-storage:/var/lib/grafana
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/provisioning/notification_channels:/etc/grafana/provisioning/notification_channels:ro
+    ports:
+      - "3000:3000"
+    networks:
+      - monitoring
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.80.0
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "4318:4318"   # OTLP HTTP
+      - "4317:4317"   # OTLP gRPC
+    networks:
+      - monitoring
+
+networks:
+  monitoring:
+volumes:
+  grafana-storage:

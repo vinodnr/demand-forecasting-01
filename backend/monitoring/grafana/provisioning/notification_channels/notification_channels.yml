@@ -1,0 +1,12 @@
+apiVersion: 1
+notifiers:
+  - name: Slack - Ops
+    type: slack
+    uid: slack_ops
+    isDefault: false
+    secure_settings:
+      # Replace with your Slack webhook URL or configure via Grafana UI / provisioning secrets
+      webhook_url: ${SLACK_WEBHOOK_URL}
+    settings:
+      recipient: "#ops-alerts"
+      mention: false
